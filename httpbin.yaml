@@ -2,16 +2,33 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: httpbin
+  name: routing
   annotations:
     getambassador.io/config: |
       ---
-      apiVersion: ambassador/v0
+      apiVersion: ambassador/v1
+      kind:  Mapping
+      name:  dc_1_mapping
+      prefix: /test/
+      headers:
+        x-dc: Odd
+      service: httpbin.org:80
+      host_rewrite: httpbin.org
+      ---
+      apiVersion: ambassador/v1
+      kind:  Mapping
+      name:  dc_2_mapping
+      prefix: /test/
+      headers:
+        x-dc: Even
+      service: google.com
+      ---
+      apiVersion: ambassador/v1
       kind:  Mapping
       name:  httpbin_mapping
       prefix: /httpbin/
       service: httpbin.org:80
-      host_rewrite: httpbin.org
+      host_rewrite: httpbin.org   
 spec:
   ports:
   - name: httpbin

@@ -6,7 +6,7 @@ metadata:
   namespace: default
 spec:
   Plugin:
-    name: wiki-plugin # The plugin's `.so` file's base name
+    name: param-plugin # The plugin's `.so` file's base name
 ---
 apiVersion: getambassador.io/v1beta1
 kind: Policy
@@ -19,7 +19,12 @@ spec:
   # which will be automatically checked
   rules:
   - host: "*"
+    path: /test/*
+    public: false # must be false if using a middleware
+    middleware:
+      name: param-plugin
+  - host: "*"
     path: /httpbin/*
     public: false # must be false if using a middleware
     middleware:
-      name: wiki-plugin
+      name: param-plugin
