@@ -1,0 +1,25 @@
+---
+apiVersion: getambassador.io/v1beta1
+kind: Middleware
+metadata:
+  name: param-plugin # how to refer to the plugin in the Policy CRD
+  namespace: default
+spec:
+  Plugin:
+    name: wiki-plugin # The plugin's `.so` file's base name
+---
+apiVersion: getambassador.io/v1beta1
+kind: Policy
+metadata:
+  name: httpbin-policy
+  namespace: default
+spec:
+  # everything defaults to private; you can create rules to make stuff
+  # public, and you can create rules to require additional scopes
+  # which will be automatically checked
+  rules:
+  - host: "*"
+    path: /httpbin/*
+    public: false # must be false if using a middleware
+    middleware:
+      name: wiki-plugin
