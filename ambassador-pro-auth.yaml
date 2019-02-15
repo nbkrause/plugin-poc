@@ -14,6 +14,7 @@ metadata:
       allowed_request_headers:
       - "Client-Id"
       - "Client-Secret"
+      - "X-DC"
       allowed_authorization_headers:
       - "Authorization"
       - "Client-Id"

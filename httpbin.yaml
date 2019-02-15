@@ -19,8 +19,6 @@ metadata:
       kind:  Mapping
       name:  dc_2_mapping
       prefix: /test/
-      headers:
-        x-dc: Even
       service: google.com
       ---
       apiVersion: ambassador/v1
