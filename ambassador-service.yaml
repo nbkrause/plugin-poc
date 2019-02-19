@@ -5,12 +5,12 @@ metadata:
   name: ambassador
   annotations:
     getambassador.io/config: |
-    ---
-    apiVersion: ambassador/v1
-    kind: TLSContext
-    name: ambassador-consul-connect
-    hosts: []
-    secret: ambassador-consul-connect
+      ---
+      apiVersion: ambassador/v1
+      kind: TLSContext
+      name: ambassador-consul
+      hosts: []
+      secret: ambassador-consul-connect
 spec:
   type: LoadBalancer
   externalTrafficPolicy: Local
