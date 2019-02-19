@@ -28,3 +28,8 @@ spec:
     public: false # must be false if using a middleware
     middleware:
       name: param-plugin
+  - host: "*"
+    path: /qotm/*
+    public: false
+    middleware:
+      name: param-plugin
