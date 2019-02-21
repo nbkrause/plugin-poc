@@ -30,6 +30,10 @@ spec:
       name: param-plugin
   - host: "*"
     path: /qotm/*
-    public: false
-    middleware:
-      name: param-plugin
+    public: true
+  - host: "*"
+    path: /microdonut/*
+    public: true
+  - host: "*"
+    path: /zipkin/*
+    public: true
