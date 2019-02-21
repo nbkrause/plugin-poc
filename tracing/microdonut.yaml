@@ -14,8 +14,6 @@ metadata:
       tls: ambassador-consul
       prefix: /microdonut/
       service: https://microdonut:443
-      headers:
-        x-dc: Even
 spec:
   type: ClusterIP
   selector:

@@ -12,14 +12,23 @@ metadata:
       prefix: /test/
       headers:
         x-dc: Odd
-      service: httpbin.org:80
-      host_rewrite: httpbin.org
+      service: https://qotm:443
+      tls: ambassador-consul
       ---
       apiVersion: ambassador/v1
       kind:  Mapping
       name:  dc_2_mapping
       prefix: /test/
-      service: google.com
+      headers:
+        x-dc: Even
+      service: https://microdonut:443
+      tls: ambassador-consul
+      ---
+      apiVersion: ambassador/v1
+      kind:  Mapping
+      name:  dc_fallback_mapping
+      prefix: /test/
+      service: ambassador
       ---
       apiVersion: ambassador/v1
       kind:  Mapping
