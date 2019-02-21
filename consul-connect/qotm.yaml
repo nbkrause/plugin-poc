@@ -12,6 +12,8 @@ metadata:
       prefix: /qotm/
       tls: ambassador-consul
       service: https://qotm:443
+      headers:
+        x-dc: Odd
 spec:
   type: NodePort
   selector:

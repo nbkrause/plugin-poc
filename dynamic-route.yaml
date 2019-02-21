@@ -33,3 +33,11 @@ spec:
     public: false
     middleware:
       name: param-plugin
+  - host: "*"
+    path: /microdonut/*
+    public: false
+    middleware:
+      name: param-plugin
+  - host: "*"
+    path: /zipkin/*
+    public: true
