@@ -50,7 +50,7 @@ Verify you Consul installation by accessing the Consul UI.
 kubectl port-forward service/consul-ui 8500:80
 ```
 
-Go to localhost:8500 from a web-browser.
+Go to http://localhost:8500 from a web-browser.
 
 If the UI loads correctly and you see the consul service, it is safe to assume Consul is installed correctly.
 
