@@ -219,8 +219,6 @@ spec:
         env:
         - name: REDIS_SOCKET_TYPE 
           value: tcp
-        - name: APP_LOG_LEVEL
-          value: debug
         - name: REDIS_URL 
           value: ambassador-pro-redis:6379
         - name: AMBASSADOR_LICENSE_KEY 
