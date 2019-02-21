@@ -1,6 +1,8 @@
 # Plugin POC
 
-## Initial set up
+This POC will install Consul Connect, Ambassador, Prometheus, Grafan, and Zipkin, along with some demo services.
+
+## Initial setup
 
 1. If you're on GKE, make sure you have an admin cluster role binding:
 
@@ -15,25 +17,117 @@ git clone https://github.com/datawire/plugin-poc.git
 ```
 
 3. Create the `ambassador-pro-registry-credentials` secret in your cluster, if you haven't done so already.
+
 4. Add your license key to the `ambassador-pro.yaml` file.
-5. Apply all the YAML in the cluster:
+
+5. Initialize Helm with the appropriate permissions.
+
+```
+kubectl apply -f helm-rbac.yaml
+helm init
+```
+
+## Set up Consul Connect
+
+We will install Consul via Helm.
+
+**Note:** The `values.yaml` file is used to configure the Helm installation. See [documentation](https://www.consul.io/docs/platform/k8s/helm.html#configuration-values-) on different options. We're providing a sample `values.yaml` file.
+
+```shell
+helm repo add consul https://consul-helm-charts.storage.googleapis.com
+helm install --name=consul consul/consul -f ./consul-connect/values.yaml
+```
+
+This will install Consul with Connect enabled. 
+
+**Note:** Sidecar auto-injection is not configured by default and can enabled by setting `connectInject.default: true` in the `values.yaml` file.
+
+## Verify the Consul installation
+
+Verify you Consul installation by accessing the Consul UI. 
+
+```shell
+kubectl port-forward service/consul-ui 8500:80
+open localhost:8500/
+```
+
+If the UI loads correctly and you see the consul service, it is safe to assume Consul is installed correctly.
+
+## Install Ambassador
+
+1. Install Ambassador with the following commands, along with the demo QOTM service and a route to HTTPbin service.
    
    ```
    kubectl apply -f statsd-sink.yaml
-   kubectl apply -f httpbin.yaml
    kubectl apply -f ambassador-pro.yaml
-   kubectl apply -f ambassador-pro-auth.yaml
    kubectl apply -f ambassador-service.yaml
-   kubectl apply -f dynamic-route.yaml
+   kubectl apply -f httpbin.yaml
+   kubectl apply -f consul-connect/qotm.yaml
    ```
 
-6. Get the IP address of your LoadBalancer: `kubectl get svc ambassador`
+2. Get the IP address of Ambassador: `kubectl get svc ambassador`.
 
-7. Test out the basic installation:
+3. Send a request to the QOTM service; this request will fail because the request is not properly encrypted.
+
+
+   ```shell
+   curl -v http://{AMBASSADOR_IP}/qotm/
+
+   < HTTP/1.1 503 Service Unavailable
+   < content-length: 57
+   < content-type: text/plain
+   < date: Thu, 21 Feb 2019 16:29:30 GMT
+   < server: envoy
+   < 
+   upstream connect error or disconnect/reset before headers
+   ```
+
+4. Send a request to `httpbin`; this request will succeed since this request is sent to a service outside of the service mesh.
 
    ```
-   curl $IP/httpbin/ip
+   curl -v http://{AMBASSADOR_IP}/httpbin/ip
+   {
+      "origin": "108.20.119.124, 35.184.242.212, 108.20.119.124"
+   }
    ```
+
+## Consul Connect integration
+
+Now install the Consul Connect integration.
+
+```shell
+kubectl apply -f consul-connect/ambassador-consul-connector.yaml
+```
+
+### Verify correct installation
+
+Verify that the `ambassador-consul-connect` secret is created. This secret is created by the integration.
+
+```shell
+kubectl get secrets
+
+ambassador-consul-connect                                 kubernetes.io/tls                     2     
+ambassador-pro-consul-connect-token-j67gs                 kubernetes.io/service-account-token   3     
+ambassador-pro-registry-credentials                       kubernetes.io/dockerconfigjson        1     
+ambassador-token-xsv9r                                    kubernetes.io/service-account-token   3     
+cert-manager-token-tggkd                                  kubernetes.io/service-account-token   3     
+consul-connect-injector-webhook-svc-account-token-4xpw9   kubernetes.io/service-account-token   3     
+```
+
+You can now send a request to QOTM, which will be encrypted with TLS. Note that we're sending an unencrypted HTTP request, which gets translated to TLS when the request is sent to Consul Connect. (Ambassador also supports TLS encryption, which is beyond the scope of this document.)
+
+```shell
+curl -v http://{AMBASSADOR_IP}/qotm/
+
+< HTTP/1.1 200 OK
+< content-type: application/json
+< content-length: 164
+< server: envoy
+< date: Thu, 21 Feb 2019 16:30:15 GMT
+< x-envoy-upstream-service-time: 129
+< 
+{"hostname":"qotm-794f5c7665-26bf9","ok":true,"quote":"The last sentence you read is often sensible nonsense.","time":"2019-02-21T16:30:15.572494","version":"1.3"}
+```
 
 ## Metrics
 
@@ -50,13 +144,13 @@ Next, we'll set up metrics using Prometheus and Grafana.
 3. Create the rest of the monitoring setup:
 
    ```
-   kubectl apply -f prom-cluster.yaml
-   kubectl apply -f prom-svc.yaml
-   kubectl apply -f servicemonitor.yaml
-   kubectl apply -f grafana.yaml
+   kubectl apply -f monitoring/prom-cluster.yaml
+   kubectl apply -f monitoring/prom-svc.yaml
+   kubectl apply -f monitoring/servicemonitor.yaml
+   kubectl apply -f monitoring/grafana.yaml
    ```
 
-4. Send some traffic through Ambassador (metrics won't appear until some traffic is sent). You can just run the `curl` command above a few times.
+4. Send some traffic through Ambassador (metrics won't appear until some traffic is sent). You can just run the `curl` command to httpbin above a few times.
 
 5. Get the IP address of Grafana: `kubectl get svc grafana`
 
@@ -68,11 +162,16 @@ Next, we'll set up metrics using Prometheus and Grafana.
 
 9. Go to the Ambassador dashboard!
 
-## Plugins
+## Dynamic Routing
 
+We'll now set up a custom Filter that will dynamically route between the QOTM service and micro donuts.
 
+1. We'll configure the custom Filter.
 
-5. `curl` to the load balancer to test different variables:
+   kubectl apply -f dynamic-route.yaml
+   kubectl apply -f ambassador-pro-auth.yaml
+
+2. `curl` to the load balancer to test different variables:
 
    ```
    curl $IP/test/?db=1
@@ -81,33 +180,17 @@ Next, we'll set up metrics using Prometheus and Grafana.
 
    Note that if the value is odd, you will go to httpbin.org. If the value is even, you will go to Google.com.
 
-### Behind the scenes
+## Key Takeaways
+
+* We're dynamically registering and resolving routes for services, e.g., in `consul-connect/qotm.yaml` and `httpbin.yaml`, new services are dynamically registered with Ambassador. Ambassador then uses Kubernetes DNS to resolve the actual IP address of these services.
+* Ambassador is processing inbound (North/South) requests to the mesh, and dynamically processing URL variables to determine where a given request should be routed.
+* Ambassador automatically obtains certificates from Consul Connect, and uses these certificate to originate encrypted TLS connections to target services in the mesh.
+* Prometheus is collecting high resolution metrics from Ambassador. A sample dashboard of some of these metrics is displayed in Grafana.
+
+### Under the hood
+
 
 * A Golang plugin is looking at the request ID, and setting an HTTP header called `X-Dc` to Odd or Even
 * In the `httpbin.yaml`, we create two mappings. One mapping maps to `X-Dc: Odd` and routes to httpbin.org. The other is a fallback mapping that routes to Google.com.
 * The source code to the Golang plugin is in https://github.com/datawire/apro-example-plugin (look at `param-plugin.go`).
-* Updating the plug-in involves making changes to the source code, `make DOCKER_REGISTRY=...`, and then updating the `ambassador-pro.yaml` sidecar to point to the new image
-
-## Consul Connect Integration
-
-1. Have Consul Connect installed in your cluster
-2. Install the Consul Connect integration and QoTM service for testing mTLS with Connect sidecar
-
-    ```
-    kubectl apply -f consul-connect/
-    ```
-
-3. Get the IP address of your LoadBalancer: `kubectl get svc ambassador`
-
-4. `curl` to the load balancer to test different variables:
-
-   ```
-   $ curl $IP/qotm/
-   {"hostname":"qotm-794f5c7665-8fntp","ok":true,"quote":"668: The Neighbor of the Beast.","time":"2019-02-19T17:48:33.922354","version":"1.3"}
-   ```
-
-### Behind the scenes
-
-* Ambassador is talking with the Consul API and grabbing the TLS certificate it is using for mTLS
-* Ambassador then creates a secret called `ambassador-consul-connect` holding this TLS certificate
-* Ambassador is told to use that secret when talking to the QoTM service with a `TLSContext` and the `tls` `Mapping` attribute
+* Updating the plug-in involves making changes to the source code, `make DOCKER_REGISTRY=...`, and then updating the `ambassador-pro.yaml` sidecar to point to the new image.

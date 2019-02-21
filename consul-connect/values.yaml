@@ -20,8 +20,8 @@ global:
 
 server:
   enabled: true
-  replicas: 3
-  bootstrapExpect: 3
+  replicas: 2
+  bootstrapExpect: 2
   # enterpriseLicense:
   #   secretName: "consul-license"
   #   secretKey: "key"
