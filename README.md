@@ -176,7 +176,7 @@ We will now set up distributed tracing using Zipkin.
   
     This will tell Ambassador to generate a tracing header for all requests through it. Ambassador needs to be restarted for this configuration to take effect.
 
-2. Restart Ambassador
+2. Restart Ambassador to reload the Tracing configuration.
 
     - Get your Ambassador Pod name
 
@@ -225,10 +225,12 @@ We will now set up distributed tracing using Zipkin.
 
 We'll now set up a custom Filter that will dynamically route between the QOTM service and micro donuts.
 
-1. We'll configure the custom Filter.
+1. We'll first deploy the custom Filter.
 
+   ```
    kubectl apply -f dynamic-route.yaml
    kubectl apply -f ambassador-pro-auth.yaml
+   ```
 
 2. `curl` to the load balancer to test different variables:
 
@@ -237,7 +239,7 @@ We'll now set up a custom Filter that will dynamically route between the QOTM se
    curl $IP/test/?db=2
    ```
 
-   Note that if the value is odd, you will go to QoTM service. If the value is even, you will go to the micro donuts application.
+   Note that if the value is odd, you will go to QoTM service (you'll see a JSON blob). If the value is even, you will go to the microdonuts application (you'll see a stream of HTML). Note that both of these services are in the service mesh.
 
 ## Key Takeaways
 
@@ -246,10 +248,9 @@ We'll now set up a custom Filter that will dynamically route between the QOTM se
 * Ambassador automatically obtains certificates from Consul Connect, and uses these certificate to originate encrypted TLS connections to target services in the mesh.
 * Prometheus is collecting high resolution metrics from Ambassador. A sample dashboard of some of these metrics is displayed in Grafana.
 
-### Under the hood
-
+### More about the Custom Filter
 
 * A Golang plugin is looking at the request ID, and setting an HTTP header called `X-Dc` to Odd or Even
-* In the `httpbin.yaml`, we create two mappings. One mapping maps to `X-Dc: Odd` and routes to httpbin.org. The other is a fallback mapping that routes to Google.com.
+* In the `httpbin.yaml`, we create several mappings. One mapping maps to `X-Dc: Odd` and routes to QoTM. The other is a mapping that routes to microdonuts.
 * The source code to the Golang plugin is in https://github.com/datawire/apro-example-plugin (look at `param-plugin.go`).
 * Updating the plug-in involves making changes to the source code, `make DOCKER_REGISTRY=...`, and then updating the `ambassador-pro.yaml` sidecar to point to the new image.
