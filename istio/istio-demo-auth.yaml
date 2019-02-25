@@ -14062,6 +14062,8 @@ spec:
             value: "9411"
           - name: MEMORY_MAX_TRACES
             value: "50000"
+          - name: QUERY_BASE_PATH
+            value: /tracing
           livenessProbe:
             httpGet:
               path: /

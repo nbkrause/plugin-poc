@@ -9,15 +9,14 @@ metadata:
       apiVersion: ambassador/v0
       kind: TracingService
       name: /tracing/
-      service: zipkin:9411
+      service: zipkin.istio-system:9411
       driver: zipkin
       ---
       apiVersion: ambassador/v0
       kind: Mapping
       name: zipkin_mapping
-      prefix: /zipkin/
-      rewrite: ""
-      service: zipkin:9411
+      prefix: /tracing/
+      service: tracing.istio-system
 spec:
   selector:
     app: zipkin
